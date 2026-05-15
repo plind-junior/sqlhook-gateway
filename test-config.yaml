@@ -1,0 +1,24 @@
+server:
+  bind: 127.0.0.1:8080
+  database_url: sqlite://./data/test.db?mode=rwc
+
+worker:
+  poll_interval_ms: 100
+  concurrency: 1
+
+routes:
+  - id: smoke
+    source_path: /smoke
+    signature:
+      header: X-Smoke-Sig
+      algo: hmac-sha256
+      secret_env: SMOKE_SECRET
+      prefix: ""
+    transform: '{ name: .user.name, msg: .message, count: (.items | length) }'
+    destination:
+      url: http://127.0.0.1:8091/sink
+      timeout_ms: 3000
+    retry:
+      max_attempts: 3
+      initial_backoff_ms: 200
+      max_backoff_ms: 2000

@@ -1,0 +1,57 @@
+[package]
+name = "sqlhook"
+version = "0.1.0"
+edition = "2021"
+description = "Webhook gateway: signature-verified ingress, jq transforms, durable retry. Inspired by patricktrainer/duckdb-webhook-gateway, reimagined for production use."
+license = "Apache-2.0"
+
+[[bin]]
+name = "sqlhook"
+path = "src/main.rs"
+
+[dependencies]
+# HTTP
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "timeout"] }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Storage
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "macros", "chrono", "migrate"] }
+
+# Config + payloads
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1"
+
+# Transform
+jaq-core = "2"
+jaq-std = "2"
+jaq-json = { version = "1", features = ["serde_json"] }
+
+# Signature verification
+hmac = "0.12"
+sha2 = "0.10"
+subtle = "2"
+hex = "0.4"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Errors + logging
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Metrics
+prometheus = "0.13"
+
+# Misc
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+async-trait = "0.1"
+
+[dev-dependencies]
+tempfile = "3"

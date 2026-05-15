@@ -1,0 +1,62 @@
+# Example sqlhook configuration.
+#
+# Routes describe how inbound events are verified, transformed, and delivered.
+# Each route is identified by `id` and bound to a unique inbound `source_path`.
+
+server:
+  bind: 127.0.0.1:8080
+  database_url: sqlite://./data/sqlhook.db?mode=rwc
+
+worker:
+  poll_interval_ms: 500
+  concurrency: 4
+
+routes:
+  - id: github-push
+    source_path: /gh/push
+    signature:
+      header: X-Hub-Signature-256
+      algo: hmac-sha256
+      # The secret is read from the named environment variable at startup.
+      secret_env: GH_WEBHOOK_SECRET
+      # Optional prefix to strip before comparing (e.g. "sha256=" for GitHub).
+      prefix: "sha256="
+    # jq-compatible expression (parsed by jaq).
+    transform: |
+      {
+        repo: .repository.full_name,
+        pusher: .pusher.name,
+        sha: .after,
+        commits: (.commits | length)
+      }
+    destination:
+      url: http://localhost:9999/sink/gh
+      timeout_ms: 5000
+    retry:
+      max_attempts: 5
+      initial_backoff_ms: 500
+      max_backoff_ms: 60000
+
+  - id: stripe-charge
+    source_path: /stripe/charges
+    signature:
+      header: Stripe-Signature
+      algo: hmac-sha256
+      secret_env: STRIPE_WEBHOOK_SECRET
+      # Stripe encodes the signature like "t=...,v1=..." but for the MVP we
+      # require the bare hex digest in the header; full Stripe parsing comes later.
+      prefix: ""
+    transform: |
+      {
+        id: .id,
+        type: .type,
+        amount: .data.object.amount,
+        currency: .data.object.currency
+      }
+    destination:
+      url: http://localhost:9999/sink/stripe
+      timeout_ms: 3000
+    retry:
+      max_attempts: 8
+      initial_backoff_ms: 1000
+      max_backoff_ms: 300000
